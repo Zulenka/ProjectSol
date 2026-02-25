@@ -89,6 +89,100 @@ function BSPMakeSafeUrl(url) {
     }
 }
 
+const BSP_RUNTIME_KEY = "__tdup_bsp_mv3_runtime__";
+const BSP_INSTANCE_ID = "bsp-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+let BSP_RUNTIME_FALLBACK = { ownerInstanceId: null, ownerVersion: null, lastStatusKey: null, lastStatus: null };
+
+function BSPGetRuntimeState() {
+    try {
+        if (!window[BSP_RUNTIME_KEY] || typeof window[BSP_RUNTIME_KEY] !== "object") {
+            window[BSP_RUNTIME_KEY] = { ownerInstanceId: null, ownerVersion: null, lastStatusKey: null, lastStatus: null };
+        }
+        return window[BSP_RUNTIME_KEY];
+    } catch (_) {
+        return BSP_RUNTIME_FALLBACK;
+    }
+}
+
+function BSPRenderStatusBanner(status) {
+    if (!status || status.severity === "info") return;
+
+    const render = () => {
+        const root = document.body || document.documentElement;
+        if (!root) return;
+
+        let banner = document.getElementById("TDup_BSP_StatusBanner");
+        if (!banner) {
+            banner = document.createElement("div");
+            banner.id = "TDup_BSP_StatusBanner";
+            banner.style.position = "fixed";
+            banner.style.top = "12px";
+            banner.style.right = "12px";
+            banner.style.maxWidth = "420px";
+            banner.style.padding = "10px 12px";
+            banner.style.border = "1px solid #333";
+            banner.style.borderRadius = "6px";
+            banner.style.fontFamily = "Arial, sans-serif";
+            banner.style.fontSize = "12px";
+            banner.style.lineHeight = "1.35";
+            banner.style.zIndex = "2147483647";
+            banner.style.boxShadow = "0 2px 8px rgba(0,0,0,0.35)";
+            root.appendChild(banner);
+        }
+
+        banner.style.background = status.severity === "error" ? "#ffe3e3" : "#fff4d1";
+        banner.style.color = "#111";
+        banner.innerHTML = "<strong>BSP status:</strong> " + status.message;
+    };
+
+    if (document.readyState === "loading" && !document.body) {
+        setTimeout(render, 0);
+        return;
+    }
+    render();
+}
+
+function BSPSetStatus(message, severity = "info", options = {}) {
+    const state = BSPGetRuntimeState();
+    const key = options.code || (severity + ":" + message);
+    if (!options.force && state.lastStatusKey === key) return;
+
+    state.lastStatusKey = key;
+    state.lastStatus = {
+        message: message,
+        severity: severity,
+        time: new Date().toISOString()
+    };
+
+    try {
+        window.__TDUP_BSP_LAST_STATUS__ = state.lastStatus;
+    } catch (_) { }
+
+    if (severity === "error")
+        console.error("[BSP]", message);
+    else if (severity === "warn")
+        console.warn("[BSP]", message);
+
+    BSPRenderStatusBanner(state.lastStatus);
+}
+
+function BSPReportRequestIssue(kind, details) {
+    let method = (details && details.method) ? details.method : "GET";
+    let safeUrl = BSPMakeSafeUrl(details && details.url);
+    BSPSetStatus("Network request " + kind + " (" + method + " " + safeUrl + "). Predictions may stay stale until reload.", "warn", { code: "xhr-" + kind + "-" + safeUrl });
+}
+
+function BSPEnsureSingleton() {
+    const state = BSPGetRuntimeState();
+    if (state.ownerInstanceId && state.ownerInstanceId !== BSP_INSTANCE_ID) {
+        BSPSetStatus("Another BSP script instance is already active on this page. Disable duplicate installs (old + MV3) and reload.", "error", { code: "duplicate-instance" });
+        return false;
+    }
+    state.ownerInstanceId = BSP_INSTANCE_ID;
+    state.ownerVersion = BSPGetScriptVersion();
+    return true;
+}
+
 
 /**
  * MV3-friendly GM.xmlHttpRequest wrapper.
@@ -105,6 +199,7 @@ function BSPXmlHttpRequest(details) {
     return new Promise((resolve, reject) => {
         if (!xhrFn) {
             const err = new Error("BSP: GM.xmlHttpRequest is not available. Check @grant + @connect permissions in your userscript manager.");
+            BSPSetStatus("GM.xmlHttpRequest is unavailable. Check userscript manager permissions (@grant/@connect) and reload Torn.", "error", { code: "gm-xhr-missing" });
             if (BSPIsDebugEnabled()) {
                 console.warn("[BSP] GM.xmlHttpRequest missing. This usually means the script lacks @grant/@connect permissions in your userscript manager.", err);
             }
@@ -142,6 +237,7 @@ function BSPXmlHttpRequest(details) {
         };
         d.onerror = (err) => {
             errorCalled = true;
+            BSPReportRequestIssue("failed", d);
             if (BSPIsDebugEnabled()) {
                 console.warn("[BSP] XHR error", { method: d.method, url: BSPMakeSafeUrl(d.url), err });
             }
@@ -150,6 +246,7 @@ function BSPXmlHttpRequest(details) {
         };
         d.ontimeout = (err) => {
             errorCalled = true;
+            BSPReportRequestIssue("timed out", d);
             if (BSPIsDebugEnabled()) {
                 console.warn("[BSP] XHR timeout", { method: d.method, url: BSPMakeSafeUrl(d.url), err });
             }
@@ -158,6 +255,7 @@ function BSPXmlHttpRequest(details) {
         };
         d.onabort = (err) => {
             errorCalled = true;
+            BSPReportRequestIssue("aborted", d);
             if (BSPIsDebugEnabled()) {
                 console.warn("[BSP] XHR aborted", { method: d.method, url: BSPMakeSafeUrl(d.url), err });
             }
@@ -283,6 +381,7 @@ function SetStorage(key, value) {
         localStorage[key] = value;
     }
     catch (e) {
+        BSPSetStatus("BSP could not write browser storage (it may be full). Open BSP Settings > Debug and clear cache/chat entries.", "warn", { code: "localstorage-write-failed" });
         LogInfo("BSP threw an exception in SetStorage method : " + e);
     }
 }
@@ -661,8 +760,15 @@ function GetPredictionFromCache(playerId) {
     if (localStorage[key] == "[object Object]")
         localStorage.removeItem(key);
 
-    if (localStorage[key] != undefined)
-        return JSON.parse(localStorage[key]);
+    if (localStorage[key] != undefined) {
+        let prediction = JSONparse(localStorage[key]);
+        if (prediction == null) {
+            localStorage.removeItem(key);
+            BSPSetStatus("An invalid BSP cache entry was removed automatically.", "warn", { code: "invalid-prediction-cache" });
+            return undefined;
+        }
+        return prediction;
+    }
 
     return undefined;
 }
@@ -962,15 +1068,19 @@ function ClearOutdatedPredictionInCache() {
     let numberOfPredictionCleared = 0;
     for (let key in localStorage) {
         if (key.startsWith(StorageKey.BSPPrediction)) {
-            let prediction = JSON.parse(localStorage[key]);
+            let prediction = JSONparse(localStorage[key]);
             if (prediction != undefined) {
                 var expirationDate = new Date();
                 expirationDate.setDate(expirationDate.getDate() - PREDICTION_VALIDITY_DAYS);
-                var predictionDate = new Date(prediction.PredictionDate);
-                if (predictionDate < expirationDate) {
+                var predictionDate = new Date(prediction.DateFetched || prediction.PredictionDate);
+                if (isNaN(predictionDate.getTime()) || predictionDate < expirationDate) {
                     localStorage.removeItem(key);
                     numberOfPredictionCleared++;
                 }
+            }
+            else {
+                localStorage.removeItem(key);
+                numberOfPredictionCleared++;
             }
         }
     }
@@ -1031,7 +1141,7 @@ async function GetPredictionForPlayer(targetId, callback) {
         if (prediction.DateFetched != undefined)
             predictionDate = new Date(prediction.DateFetched);
 
-        if (predictionDate < expirationDate) {
+        if (isNaN(predictionDate.getTime()) || predictionDate < expirationDate) {
             var key = StorageKey.BSPPrediction + targetId;
             localStorage.removeItem(key);
             isPredictionValid = false;
@@ -1057,7 +1167,7 @@ async function GetPredictionForPlayer(targetId, callback) {
         SetPredictionInCache(targetId, newPrediction);
     }
 
-    if (targetSpy != undefined) {
+    if (targetSpy != undefined && newPrediction != undefined) {
         newPrediction.attachedSpy = targetSpy;
     }
     callback(targetId, newPrediction);
@@ -2774,9 +2884,22 @@ function RefreshOptionMenuWithSubscription() {
 }
 
 function BuildSettingsMenu(node) {
+    if (!node) {
+        node = document.querySelector(".content-title") || document.body;
+    }
+    if (!node) {
+        BSPSetStatus("BSP could not build the settings window because no page anchor was found.", "warn", { code: "settings-menu-anchor-missing" });
+        return;
+    }
+    let existingSettingsDiv = document.getElementById("TDup_PredictorOptionsDiv");
+    if (existingSettingsDiv != undefined) {
+        TDup_PredictorOptionsDiv = existingSettingsDiv;
+        return;
+    }
 
     LogInfo("Building BSP option window");
     TDup_PredictorOptionsDiv = document.createElement("div");
+    TDup_PredictorOptionsDiv.id = "TDup_PredictorOptionsDiv";
     TDup_PredictorOptionsDiv.style.background = "lightgray";
 
     TDup_PredictorOptionsMenuArea = document.createElement("div");
@@ -2917,11 +3040,14 @@ function InjectOptionMenu(node) {
     var topPageLinksList = node.querySelector("#top-page-links-list");
     if (topPageLinksList == undefined)
         return;
+    if (topPageLinksList.querySelector(".TDup_divBtnBsp[data-bsp-role='top-settings']"))
+        return;
 
     //node.style.position = "relative";
 
     let btnOpenSettings = document.createElement("a");
     btnOpenSettings.className = "t-clear h c-pointer  line-h24 right TDup_divBtnBsp";
+    btnOpenSettings.setAttribute("data-bsp-role", "top-settings");
     btnOpenSettings.innerHTML = '<div class="TDup_button" style="font-size:x-small"><img src="' + mainBSPIcon + '" style="max-width:100px;max-height:16px;vertical-align:middle;"/>Settings</div>';
 
     btnOpenSettings.addEventListener("click", () => {
@@ -2952,9 +3078,12 @@ function InjectBSPSettingsButtonInProfile(node) {
         OnMobile = true;
         return;
     }
+    if (node.querySelector(".TDup_divBtnBsp[data-bsp-role='profile-settings']"))
+        return;
 
     var btnOpenSettingsProfile = document.createElement("a");
     btnOpenSettingsProfile.className = "t-clear h c-pointer  line-h24 right TDup_divBtnBsp";
+    btnOpenSettingsProfile.setAttribute("data-bsp-role", "profile-settings");
     btnOpenSettingsProfile.style.float = "none";
     btnOpenSettingsProfile.innerHTML = '<div class="TDup_button" style="font-size:large"><img src="' + mainBSPIcon + '" style="max-width:100px;max-height:30px;vertical-align:middle;"/>Settings</div>';
 
@@ -2975,7 +3104,10 @@ function InjectBSPSettingsButtonInProfile(node) {
     });
 
     ;
-    node.insertBefore(btnOpenSettingsProfile, node.children[1]);
+    if (node.children != undefined && node.children.length > 1)
+        node.insertBefore(btnOpenSettingsProfile, node.children[1]);
+    else
+        node.appendChild(btnOpenSettingsProfile);
 }
 
 var statsAlreadyDisplayedOnProfile = false;
@@ -3396,8 +3528,28 @@ function ClearInjectedStatsInCell(cell) {
     ).forEach(el => el.remove());
 }
 
+function BSPScheduleSettingsButtonHealthCheck() {
+    setTimeout(function () {
+        if (!IsPage(PageType.Profile))
+            return;
+
+        if (GetStorageBool(StorageKey.IsHidingBSPOptionButtonInToolbar))
+            return;
+
+        let hasProfileButton = document.querySelector(".TDup_divBtnBsp[data-bsp-role='profile-settings']") != undefined;
+        let hasTopButton = document.querySelector(".TDup_divBtnBsp[data-bsp-role='top-settings']") != undefined;
+        if (!hasProfileButton && !hasTopButton) {
+            BSPSetStatus("BSP loaded but could not inject the Settings button. Torn's page layout may have changed.", "warn", { code: "settings-button-missing" });
+        }
+    }, 5000);
+}
+
 (function () {
     'use strict';
+
+    if (!BSPEnsureSingleton()) {
+        return;
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
 
@@ -3422,7 +3574,7 @@ function ClearInjectedStatsInCell(cell) {
     if (!GetStorageBool(StorageKey.IsHidingBSPOptionButtonInToolbar)) {
         LogInfo("Inject Option Menu...");
 
-        InjectBSPSettingsButtonInProfile(document.querySelector(".container clearfix"));
+        InjectBSPSettingsButtonInProfile(document.querySelector(".container.clearfix"));
         InjectBSPSettingsButtonInProfile(document.querySelector("#sidebar"));
         LogInfo("Inject Option Menu done.");
     }
@@ -3451,11 +3603,13 @@ function ClearInjectedStatsInCell(cell) {
 
     if (!IsSubscriptionValid()) {
         LogInfo("BSP Subscription invalid");
+        BSPSetStatus("BSP subscription is expired or has not refreshed yet. Open BSP Settings on your profile page to check/update it.", "warn", { code: "subscription-invalid" });
         return;
     }
 
     if (!IsBSPEnabledOnCurrentPage()) {
         LogInfo("BSP disabled on current page");
+        BSPSetStatus("BSP is disabled on this page (see BSP Settings > Pages).", "info", { code: "bsp-disabled-page" });
         return;
     }
 
@@ -3531,7 +3685,8 @@ function ClearInjectedStatsInCell(cell) {
         mutations.forEach(function (mutation) {
             for (const node of mutation.addedNodes) {
                 if (node.querySelector) {
-                    InjectBSPSettingsButtonInProfile(document.querySelector(".container clearfix"));
+                    InjectBSPSettingsButtonInProfile(document.querySelector(".container.clearfix"));
+                    InjectBSPSettingsButtonInProfile(document.querySelector("#sidebar"));
 
                     if (IsPage(PageType.Profile))
                         InjectInProfilePage(false, node);
@@ -3563,6 +3718,7 @@ function ClearInjectedStatsInCell(cell) {
         ProfileTargetId = urlParams.get('XID');
     }
 
+    BSPScheduleSettingsButtonHealthCheck();
     observer.observe(document, { attributes: false, childList: true, characterData: false, subtree: true });
 
 })();

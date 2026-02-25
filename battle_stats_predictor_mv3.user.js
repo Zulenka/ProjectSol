@@ -188,6 +188,48 @@ function BSPEnsureSingleton() {
     return true;
 }
 
+function BSPDetectPreexistingBspUi() {
+    try {
+        const findings = [];
+        const buttonCount = document.querySelectorAll(".TDup_divBtnBsp").length;
+        const gridOverlayCount = document.querySelectorAll(".TDup_ColoredStatsInjectionDiv, .TDup_ColoredStatsInjectionDivWithoutHonorBar").length;
+        const attackOverlayCount = document.querySelectorAll(".iconStatsAttack").length;
+
+        if (document.getElementById("TDup_PredictorOptionsDiv")) findings.push("settings window");
+        if (buttonCount > 0) findings.push(buttonCount + " BSP button(s)");
+        if (gridOverlayCount > 0) findings.push(gridOverlayCount + " grid overlay(s)");
+        if (attackOverlayCount > 0) findings.push(attackOverlayCount + " attack overlay(s)");
+
+        if (findings.length > 0) {
+            BSPSetStatus("Another BSP UI is already present before MV3 startup (" + findings.join(", ") + "). Disable duplicate BSP installs and reload.", "warn", { code: "preexisting-bsp-ui" });
+        }
+    } catch (_) { }
+}
+
+function BSPRemoveExistingAttackStatsOverlays(container) {
+    if (!container || !container.querySelectorAll) return 0;
+
+    let removed = 0;
+    const overlays = Array.from(container.querySelectorAll(".iconStatsAttack"));
+    overlays.forEach((overlay) => {
+        let node = overlay;
+        while (node && node.parentElement && node.parentElement !== container) {
+            node = node.parentElement;
+        }
+        if (node && node.parentElement === container) {
+            node.remove();
+            removed++;
+            return;
+        }
+        if (overlay.parentElement) {
+            overlay.parentElement.remove();
+            removed++;
+        }
+    });
+
+    return removed;
+}
+
 
 /**
  * MV3-friendly GM.xmlHttpRequest wrapper.
@@ -3435,6 +3477,16 @@ function InjectInAttackPage(isInit, node) {
 }
 
 function OnPlayerStatsRetrievedForAttackPage(targetId, prediction) {
+    if (prediction == undefined) {
+        BSPSetStatus("BSP could not fetch an attack-page prediction. Check API key/subscription/network status and reload.", "warn", { code: "attack-prediction-missing" });
+        return;
+    }
+    if (nodeForAttackPage) {
+        const removedOverlays = BSPRemoveExistingAttackStatsOverlays(nodeForAttackPage);
+        if (removedOverlays > 0) {
+            BSPSetStatus("Removed pre-existing BSP attack overlay(s) before drawing MV3 output. This usually means multiple BSP installs are active.", "warn", { code: "attack-overlay-deduped" });
+        }
+    }
 
     let spyMargin = '-5px 70px';
 
@@ -3508,6 +3560,8 @@ function OnPlayerStatsRetrievedForAttackPage(targetId, prediction) {
     }
 
     let tipsDiv = document.createElement("div");
+    tipsDiv.className = "TDup_AttackStatsInjectionDiv";
+    tipsDiv.setAttribute("data-bsp-source", "mv3");
     tipsDiv.innerHTML = extraIndicator + '<div style="z-index: 100;"><div class="iconStatsAttack" ' + title + ' style="background:' + colorComparedToUs + '">' + formattedBattleStats + '</div></div>';
     nodeForAttackPage.appendChild(tipsDiv);
 
@@ -3654,6 +3708,7 @@ function BSPScheduleSettingsButtonHealthCheck() {
     if (!BSPEnsureSingleton()) {
         return;
     }
+    BSPDetectPreexistingBspUi();
 
     document.addEventListener('DOMContentLoaded', function () {
 

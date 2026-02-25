@@ -3,8 +3,8 @@
 // @description Show battle stats prediction, computed by a third party service
 // @version     9.4.0
 // @namespace   tdup.battleStatsPredictor
-// @updateURL   https://github.com/tdup-torn/userscripts/raw/master/battle_stats_predictor.user.js
-// @downloadURL https://github.com/tdup-torn/userscripts/raw/master/battle_stats_predictor.user.js
+// @updateURL   https://github.com/Zulenka/ProjectSol/blob/master/battle_stats_predictor_mv3.user.js
+// @downloadURL https://github.com/Zulenka/ProjectSol/blob/master/battle_stats_predictor_mv3.user.js
 // @match       https://www.torn.com/profiles.php*
 // @match       https://www.torn.com/bringafriend.php*
 // @match       https://www.torn.com/halloffame.php*

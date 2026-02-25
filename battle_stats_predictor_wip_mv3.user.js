@@ -172,6 +172,11 @@ function BSPReportRequestIssue(kind, details) {
     BSPSetStatus("Network request " + kind + " (" + method + " " + safeUrl + "). Predictions may stay stale until reload.", "warn", { code: "xhr-" + kind + "-" + safeUrl });
 }
 
+function BSPNoCacheUrl(url) {
+    let separator = url.includes("?") ? "&" : "?";
+    return url + separator + "_bsp_ts=" + Date.now();
+}
+
 function BSPEnsureSingleton() {
     const state = BSPGetRuntimeState();
     if (state.ownerInstanceId && state.ownerInstanceId !== BSP_INSTANCE_ID) {
@@ -3741,7 +3746,7 @@ function FetchUserDataFromBSPServer() {
     return new Promise((resolve, reject) => {
         BSPXmlHttpRequest({
             method: 'GET',
-            url: `${GetBSPServer()}/battlestats/user/${GetStorage(StorageKey.PrimaryAPIKey)}/${BSPGetScriptVersion()}`,
+            url: BSPNoCacheUrl(`${GetBSPServer()}/battlestats/user/${GetStorage(StorageKey.PrimaryAPIKey)}/${BSPGetScriptVersion()}`),
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -3833,7 +3838,7 @@ function FetchScoreAndTBS(targetId) {
     return new Promise((resolve, reject) => {
         BSPXmlHttpRequest({
             method: 'GET',
-            url: `${GetBSPServer()}/battlestats/${GetStorage(StorageKey.PrimaryAPIKey)}/${targetId}/${BSPGetScriptVersion()}`,
+            url: BSPNoCacheUrl(`${GetBSPServer()}/battlestats/${GetStorage(StorageKey.PrimaryAPIKey)}/${targetId}/${BSPGetScriptVersion()}`),
             headers: {
                 'Content-Type': 'application/json'
             },

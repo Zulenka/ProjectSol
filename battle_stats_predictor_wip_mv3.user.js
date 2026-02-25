@@ -3010,7 +3010,7 @@ function InjectImportSpiesButton(node) {
     mainNode = node;
     var topPageLinksList = node.querySelector("#top-page-links-list");
     if (topPageLinksList == undefined)
-        return;
+        topPageLinksList = node;
 
     var tdupDivBtnBspExists = topPageLinksList.querySelector(".TDup_divBtnBsp") !== null;
     if (tdupDivBtnBspExists) return;
@@ -3086,7 +3086,7 @@ function InjectOptionMenu(node) {
     mainNode = node;
     var topPageLinksList = node.querySelector("#top-page-links-list");
     if (topPageLinksList == undefined)
-        return;
+        topPageLinksList = node;
     if (topPageLinksList.querySelector(".TDup_divBtnBsp[data-bsp-role='top-settings']"))
         return;
 
@@ -3747,6 +3747,10 @@ function BSPScheduleSettingsButtonHealthCheck() {
                 if (node.querySelector) {
                     InjectBSPSettingsButtonInProfile(document.querySelector(".container.clearfix"));
                     InjectBSPSettingsButtonInProfile(document.querySelector("#sidebar"));
+                    if (IsPage(PageType.Profile))
+                        InjectOptionMenu(document.querySelector(".content-title"));
+                    if (window.location.href.startsWith("https://www.torn.com/factions.php"))
+                        InjectImportSpiesButton(document.querySelector(".content-title"));
 
                     if (IsPage(PageType.Profile))
                         InjectInProfilePage(false, node);

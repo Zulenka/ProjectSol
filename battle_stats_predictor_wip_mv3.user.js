@@ -27,11 +27,6 @@
 // @run-at      document-end
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
-// @grant       GM.info
-// @grant       GM.getValue
-// @grant       GM.setValue
-// @grant       GM_setValue
-// @grant       GM_getValue
 // @grant       GM_info
 // @connect     api.torn.com
 // @connect     www.lol-manager.com

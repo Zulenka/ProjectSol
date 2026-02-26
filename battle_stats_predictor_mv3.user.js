@@ -4353,11 +4353,10 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                             errorText += " (" + results.message + ")";
                         }
                         LogInfo(errorText);
-                        BSPSetStatus(errorText + ".", "warn", { code: "tornstats-faction-members-missing" });
                         if (isUI) {
                             failedElem.style.visibility = "visible";
                             failedElem.style.display = "inline-block";
-                            failedElem.innerHTML = errorText;
+                            failedElem.innerHTML = "Error while calling TornStats";
                             successElem.style.visibility = "hidden";
                         }
                         return;

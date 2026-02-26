@@ -4337,12 +4337,29 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                         return;
                     }
 
+                    let factionMembers = results && results.faction && results.faction.members;
+                    if (factionMembers == undefined || factionMembers == null) {
+                        let errorText = "TornStats returned no faction members for faction " + factionId;
+                        if (results != undefined && results.message != undefined) {
+                            errorText += " (" + results.message + ")";
+                        }
+                        LogInfo(errorText);
+                        BSPSetStatus(errorText + ".", "warn", { code: "tornstats-faction-members-missing" });
+                        if (isUI) {
+                            failedElem.style.visibility = "visible";
+                            failedElem.style.display = "block";
+                            failedElem.innerHTML = errorText;
+                            successElem.style.visibility = "hidden";
+                        }
+                        return;
+                    }
+
                     let membersCount = 0;
                     let newSpiesAdded = 0;
                     let spyUpdated = 0;
                     let spyError = 0;
-                    for (var key in results.faction.members) {
-                        let factionMember = results.faction.members[key];
+                    for (var key in factionMembers) {
+                        let factionMember = factionMembers[key];
                         if (factionMember.spy == undefined) {
                             continue;
                         }

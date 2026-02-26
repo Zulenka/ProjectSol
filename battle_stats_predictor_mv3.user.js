@@ -3029,7 +3029,9 @@ function InjectImportSpiesButton(node) {
 
     let errorImportTornStatsSpiesForFaction = document.createElement("label");
     errorImportTornStatsSpiesForFaction.innerHTML = 'Error while fetching spies from TornStats';
-    errorImportTornStatsSpiesForFaction.style.backgroundColor = 'red';
+    errorImportTornStatsSpiesForFaction.style.color = 'red';
+    errorImportTornStatsSpiesForFaction.style.fontWeight = 'bold';
+    errorImportTornStatsSpiesForFaction.style.marginLeft = '8px';
     errorImportTornStatsSpiesForFaction.style.display = "none";
 
     const URLPage = new URL(window.location.href);
@@ -4327,7 +4329,7 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                         LogInfo("Error while calling TornStats");
                         if (isUI) {
                             failedElem.style.visibility = "visible";
-                            failedElem.style.display = "block";
+                            failedElem.style.display = "inline-block";
                             failedElem.innerHTML = "Error while calling TornStats";
                             successElem.style.visibility = "hidden";
                         }
@@ -4337,7 +4339,7 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                         LogInfo("Error - TornStats");
                         if (isUI) {
                             failedElem.style.visibility = "visible";
-                            failedElem.style.display = "block";
+                            failedElem.style.display = "inline-block";
                             failedElem.innerHTML = results.message;
                             successElem.style.visibility = "hidden";
                         }
@@ -4354,7 +4356,7 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                         BSPSetStatus(errorText + ".", "warn", { code: "tornstats-faction-members-missing" });
                         if (isUI) {
                             failedElem.style.visibility = "visible";
-                            failedElem.style.display = "block";
+                            failedElem.style.display = "inline-block";
                             failedElem.innerHTML = errorText;
                             successElem.style.visibility = "hidden";
                         }

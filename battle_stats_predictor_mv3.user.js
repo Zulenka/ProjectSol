@@ -3025,6 +3025,8 @@ function InjectImportSpiesButton(node) {
     let successImportTornStatsSpiesForFaction = document.createElement("label");
     successImportTornStatsSpiesForFaction.innerHTML = 'Spies imported!';
     successImportTornStatsSpiesForFaction.style.color = 'green';
+    successImportTornStatsSpiesForFaction.style.fontWeight = 'bold';
+    successImportTornStatsSpiesForFaction.style.marginLeft = '8px';
     successImportTornStatsSpiesForFaction.style.visibility = "hidden";
 
     let errorImportTornStatsSpiesForFaction = document.createElement("label");
@@ -4394,7 +4396,7 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                     if (isUI) {
                         failedElem.style.visibility = "hidden";
                         successElem.style.visibility = "visible";
-                        successElem.style.display = "block";
+                        successElem.style.display = "inline-block";
                         successElem.innerHTML = textToDisplay;
                     }
                 } catch (err) {

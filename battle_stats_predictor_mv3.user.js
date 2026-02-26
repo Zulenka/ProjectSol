@@ -3122,6 +3122,15 @@ function InjectBSPSettingsButtonInProfile(node) {
     if (!node)
         return;
 
+    // Current Torn layouts can expose a very broad `.container.clearfix` wrapper.
+    // Injecting there creates a giant banner-sized "Settings" button.
+    if (node.id !== "sidebar" && typeof node.className === "string") {
+        let classes = " " + node.className + " ";
+        if (classes.includes(" container ") && classes.includes(" clearfix ")) {
+            return;
+        }
+    }
+
     if (node.className.indexOf('mobile') !== -1) {
         OnMobile = true;
         return;
@@ -3722,7 +3731,6 @@ function BSPScheduleSettingsButtonHealthCheck() {
     if (!GetStorageBool(StorageKey.IsHidingBSPOptionButtonInToolbar)) {
         LogInfo("Inject Option Menu...");
 
-        InjectBSPSettingsButtonInProfile(document.querySelector(".container.clearfix"));
         InjectBSPSettingsButtonInProfile(document.querySelector("#sidebar"));
         LogInfo("Inject Option Menu done.");
     }
@@ -3833,7 +3841,6 @@ function BSPScheduleSettingsButtonHealthCheck() {
         mutations.forEach(function (mutation) {
             for (const node of mutation.addedNodes) {
                 if (node.querySelector) {
-                    InjectBSPSettingsButtonInProfile(document.querySelector(".container.clearfix"));
                     InjectBSPSettingsButtonInProfile(document.querySelector("#sidebar"));
                     if (IsPage(PageType.Profile))
                         InjectOptionMenu(document.querySelector(".content-title"));

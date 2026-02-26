@@ -4358,7 +4358,7 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                         if (isUI) {
                             failedElem.style.visibility = "visible";
                             failedElem.style.display = "inline-block";
-                            failedElem.innerHTML = "Error while calling TornStats";
+                            failedElem.innerHTML = "TornStats returned 0 spies.";
                             successElem.style.visibility = "hidden";
                         }
                         return;

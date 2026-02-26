@@ -3031,7 +3031,7 @@ function InjectImportSpiesButton(node) {
 
     let errorImportTornStatsSpiesForFaction = document.createElement("label");
     errorImportTornStatsSpiesForFaction.innerHTML = 'Error while fetching spies from TornStats';
-    errorImportTornStatsSpiesForFaction.style.color = 'red';
+    errorImportTornStatsSpiesForFaction.style.color = '#c0392b';
     errorImportTornStatsSpiesForFaction.style.fontWeight = 'bold';
     errorImportTornStatsSpiesForFaction.style.marginLeft = '8px';
     errorImportTornStatsSpiesForFaction.style.display = "none";
@@ -4332,7 +4332,7 @@ function FetchFactionSpiesFromTornStats(factionId, button, successElem, failedEl
                         if (isUI) {
                             failedElem.style.visibility = "visible";
                             failedElem.style.display = "inline-block";
-                            failedElem.innerHTML = "Error while calling TornStats";
+                            failedElem.innerHTML = "TornStats returned 0 spies.";
                             successElem.style.visibility = "hidden";
                         }
                         return;

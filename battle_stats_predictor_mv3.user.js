@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Battle Stats Predictor
 // @description Show battle stats prediction, computed by a third party service
-// @version     9.4.0
+// @version     9.4.1
 // @namespace   tdup.battleStatsPredictor
 // @updateURL   https://raw.githubusercontent.com/Zulenka/ProjectSol/master/battle_stats_predictor_mv3.user.js
 // @downloadURL https://raw.githubusercontent.com/Zulenka/ProjectSol/master/battle_stats_predictor_mv3.user.js
@@ -25,14 +25,14 @@
 // @match       https://www.torn.com/preferences.php*
 // @match       https://www.torn.com/loader.php?sid=attack*
 // @run-at      document-end
-// @inject-into content
+// @inject-into auto
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @grant       GM_info
-// @connect     https://api.torn.com
-// @connect     https://stormmotors.org
-// @connect     https://www.tornstats.com
-// @connect     https://yata.yt
+// @connect     api.torn.com
+// @connect     stormmotors.org
+// @connect     www.tornstats.com
+// @connect     yata.yt
 // @author      TDup
 // ==/UserScript==
 

@@ -33,6 +33,7 @@
 // @connect     stormmotors.org
 // @connect     www.tornstats.com
 // @connect     yata.yt
+// @license     MIT
 // @author      TDup
 // ==/UserScript==
 

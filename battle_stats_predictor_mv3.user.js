@@ -25,7 +25,6 @@
 // @match       https://www.torn.com/preferences.php*
 // @match       https://www.torn.com/loader.php?sid=attack*
 // @run-at      document-end
-// @inject-into page
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @grant       GM_info
